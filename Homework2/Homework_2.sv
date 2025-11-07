@@ -43,7 +43,7 @@ module Homework_2 (input logic clk,
             RUN: begin
                 if (xb)
                     next_state = JUMP;
-                if (yb)
+                else if (yb)
                     next_state = RUN;
                 else
                     next_state = STAND;
@@ -52,7 +52,7 @@ module Homework_2 (input logic clk,
             JUMP: begin
                 if (bb && xb)
                     next_state = DOUBLE_JUMP;
-                if (yb)
+                else if (yb)
                     next_state = RUN;
                 else
                     next_state = STAND;
@@ -64,7 +64,6 @@ module Homework_2 (input logic clk,
         endcase
     end
 
-    always_comb begin
-        action = current_state;
-    end
+    assign action = current_state;
+    
 endmodule
