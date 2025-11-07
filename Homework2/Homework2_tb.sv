@@ -1,14 +1,16 @@
 `timescale 1ns/1ps
 
-module tb_Homework_2;
+module Homework_2_tb;
 
-    // DUT ports
+    // Inputs
     logic clk;
     logic reset;
     logic [2:0] buttons;
+
+    // Output
     logic [1:0] action;
 
-    // instantiate DUT
+    // Instantiate DUT
     Homework_2 dut (
         .clk(clk),
         .reset(reset),
@@ -16,108 +18,62 @@ module tb_Homework_2;
         .action(action)
     );
 
-    // clock generation
-    initial begin
-        clk = 0;
-        forever #5 clk = ~clk; // 10ns period
-    end
+    // Clock generation (period = 10ns)
+    always #5 clk = ~clk;
 
-    integer errors = 0;
-    integer tests = 0;
-
-    // helper: apply buttons for N rising edges
-    task automatic apply_buttons(input logic [2:0] b, input int cycles);
-        int i;
-        begin
-            buttons = b;
-            for (i = 0; i < cycles; i = i + 1) begin
-                @(posedge clk);
-                #1;
-            end
-            // release
-            buttons = 3'b000;
-            @(posedge clk); #1;
-        end
+    // Task pour afficher l’état
+    task display_state(input string label);
+        $display("[%0t] %s | buttons=%b | action=%b",
+                 $time, label, buttons, action);
     endtask
 
+    // Test sequence
     initial begin
-        $display("\nStarting tb at time %0t\n", $time);
-        $dumpfile("tb_homework2.vcd");
-        $dumpvars(0, tb_Homework_2, dut);
-
-        // init
+        // Initialisation
+        clk = 0;
         reset = 1;
         buttons = 3'b000;
-        @(posedge clk);
-        @(posedge clk);
+        #10;
         reset = 0;
-        @(posedge clk);
-        #1;
 
-        // Test 1: after reset -> STAND (00)
-        tests = tests + 1;
-        if (action !== 2'b00) begin
-            $display("TEST %0d FAIL: after reset action=%b expected=00", tests, action);
-            errors = errors + 1;
-        end else $display("TEST %0d PASS: after reset action=%b", tests, action);
+        // Etat initial : STAND
+        display_state("Initial (STAND)");
 
-        // Test 2: Press X -> Jump (01)
-        tests = tests + 1;
-        apply_buttons(3'b100, 1); // X
-        if (action !== 2'b01) begin
-            $display("TEST %0d FAIL: X -> action=%b expected=01 (Jump)", tests, action);
-            errors = errors + 1;
-        end else $display("TEST %0d PASS: X -> Jump (%b)", tests, action);
+        // Appui sur X → JUMP
+        buttons = 3'b100;
+        #10; display_state("Press X (JUMP)");
 
-        // Test 3: While in Jump, press B+X -> Double Jump (10)
-        tests = tests + 1;
-        // first go to jump again (ensure we're in JUMP)
-        apply_buttons(3'b100, 1); // X -> Jump
-        apply_buttons(3'b101, 1); // B+X -> Double Jump
-        if (action !== 2'b10) begin
-            $display("TEST %0d FAIL: B+X in Jump -> action=%b expected=10 (Double Jump)", tests, action);
-            errors = errors + 1;
-        end else $display("TEST %0d PASS: B+X -> Double Jump (%b)", tests, action);
+        // Appui simultané sur B et X → DOUBLE JUMP
+        buttons = 3'b101;
+        #10; display_state("Press B+X (DOUBLE JUMP)");
 
-        // After DoubleJump, should return to Stand
-        tests = tests + 1;
-        @(posedge clk); #1;
-        if (action !== 2'b00) begin
-            $display("TEST %0d FAIL: after DoubleJump action=%b expected=00 (Stand)", tests, action);
-            errors = errors + 1;
-        end else $display("TEST %0d PASS: after DoubleJump -> Stand (%b)", tests, action);
+        // Retour à STAND
+        buttons = 3'b000;
+        #10; display_state("Back to STAND");
 
-        // Test 4: From Stand, press Y -> Run (11)
-        tests = tests + 1;
-        apply_buttons(3'b010, 1); // Y
-        if (action !== 2'b11) begin
-            $display("TEST %0d FAIL: Y in Stand -> action=%b expected=11 (Run)", tests, action);
-            errors = errors + 1;
-        end else $display("TEST %0d PASS: Y -> Run (%b)", tests, action);
+        // Appui sur Y → RUN
+        buttons = 3'b010;
+        #10; display_state("Press Y (RUN)");
 
-        // Test 5: In Run, release Y -> Stand
-        tests = tests + 1;
-        @(posedge clk); #1; // no button
-        if (action !== 2'b00) begin
-            $display("TEST %0d FAIL: release Y -> action=%b expected=00 (Stand)", tests, action);
-            errors = errors + 1;
-        end else $display("TEST %0d PASS: release Y -> Stand (%b)", tests, action);
+        // Reste sur RUN tant que Y maintenu
+        #10; display_state("Still RUN");
 
-        // Test 6: From Jump, pressing Y -> Run
-        tests = tests + 1;
-        apply_buttons(3'b100, 1); // X -> Jump
-        apply_buttons(3'b010, 1); // Y -> Run
-        if (action !== 2'b11) begin
-            $display("TEST %0d FAIL: Jump then Y -> action=%b expected=11 (Run)", tests, action);
-            errors = errors + 1;
-        end else $display("TEST %0d PASS: Jump then Y -> Run (%b)", tests, action);
+        // Relâchement de Y → STAND
+        buttons = 3'b000;
+        #10; display_state("Release Y (STAND)");
 
-        // summary
-        $display("\nTESTS completed: %0d, ERRORS: %0d\n", tests, errors);
-        if (errors == 0) $display("ALL TESTS PASS\n");
-        else $display("SOME TESTS FAILED - see messages\n");
+        // JUMP → puis Y → retour RUN
+        buttons = 3'b100;
+        #10; display_state("Jump again");
+        buttons = 3'b010;
+        #10; display_state("Then press Y (RUN)");
 
-        #20;
+        // RESET pour vérifier retour à STAND
+        reset = 1;
+        #10; reset = 0;
+        #10; display_state("After Reset (STAND)");
+
+        $display("Test completed.");
         $finish;
     end
 

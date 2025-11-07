@@ -5,9 +5,9 @@ module Homework_2 (input logic clk,
 
     // pls encode the output action as
     typedef enum logic [1:0] {
-        STAND = 2'b00
-        JUMP = 2'b01
-        DOUBLE_JUMP = 2'b10
+        STAND = 2'b00,
+        JUMP = 2'b01,
+        DOUBLE_JUMP = 2'b10,
         RUN = 2'b11
     } state_t;
 
@@ -65,6 +65,6 @@ module Homework_2 (input logic clk,
     end
 
     always_comb begin
-        action = current_state
+        action = current_state;
     end
-endmode
+endmodule
